@@ -53,6 +53,32 @@ namespace ben
                 return *this;
             }
 
+            vector& operator=( const vector& other )
+            {
+                if ( this != &other )
+                {
+                    if ( capacity() < other.size() )
+                    {
+                        clear();
+                        operator delete( start_of_mem );
+
+                        allocate( other.size() );
+                    }
+                    else
+                    {
+                        clear();
+                    }
+
+                    for ( size_t i = 0; i < other.size(); ++i )
+                    {
+                        new ( address_of_last ) T( other[ i ] );
+                        address_of_last++;
+                    }
+                }
+                return *this;
+            }
+
+
             ~vector ( ) 
             {
                 for (size_t i = 0; i < size(); ++i)
@@ -96,49 +122,54 @@ namespace ben
 
             void reserve (size_t size)
             {
-                size_t current_size = address_of_last - start_of_mem;
+                size_t current_size = vector::size();
                 size_t new_capacity = size;
 
-                if (current_size >= new_capacity)
-                {
-                    std::cout << "reserve size should be bigger than current array size." << std::endl;
-                    return;
-                }
+                if (current_size >= new_capacity) return; 
 
-                T *temp_start_of_mem = static_cast<T*>(operator new(new_capacity * sizeof(T))); 
-                T *temp_end_of_mem = temp_start_of_mem + new_capacity; 
+                T* new_block = static_cast<T*>(operator new(new_capacity * sizeof(T))); 
 
-                for ( size_t i {}; i < current_size; i++)
+                for ( size_t i = 0; i < current_size; i++)
                 {
-                    temp_start_of_mem[i] = std::move(start_of_mem[i]); 
-                }
-
-                for ( size_t i = 0; i < vector::size(); ++i)
-                {
+                    new (new_block + i) T(std::move_if_noexcept(start_of_mem[i]));
                     start_of_mem[i].~T(); 
                 }
+
                 operator delete(start_of_mem);
 
-                start_of_mem = temp_start_of_mem;
-                end_of_mem = temp_end_of_mem;
+                start_of_mem = new_block;
+                end_of_mem = start_of_mem + new_capacity; 
                 address_of_last = start_of_mem + current_size;
             }
 
-            void push_back(const T& var)
+            T* push_back(const T& var)
             {
                 if (end_of_mem == address_of_last) reserve();
-
                 new (address_of_last) T(var);
+                T* result = address_of_last;
                 address_of_last++;
+                return result;
             }
 
-            void push_back(T&& var)
+            T* push_back(T&& var)
             {
                 if (end_of_mem == address_of_last) reserve();
-                if (address_of_last == nullptr) reserve();
 
                 new (address_of_last) T(std::move(var));
+                T* result = address_of_last;
                 address_of_last++;
+                return result;
+            }
+
+            template <typename... Args>
+            T* emplace_back(Args&&... args)
+            {
+                if (address_of_last == end_of_mem) reserve();
+
+                new (address_of_last) T(std::forward<Args>(args)...);
+                T* result = address_of_last;
+                address_of_last++;
+                return result;
             }
 
         private:
@@ -153,26 +184,25 @@ namespace ben
                 address_of_last = start_of_mem;
             }
 
-            void reserve ()
+            void reserve()
             {
-                if (start_of_mem == nullptr) allocate(1);
-                size_t current_capacity = capacity() ;
-                size_t new_capacity = (current_capacity == 0) ? 1 : current_capacity * 2;
-                size_t current_size = size() ;
+                size_t current_cap = capacity();
+                size_t new_cap = (current_cap == 0) ? 1 : current_cap * 2;
+                size_t current_s = size();
 
-                T* new_block = static_cast<T*>(operator new(new_capacity * sizeof(T))); 
+                T* new_block = static_cast<T*>(operator new(new_cap * sizeof(T)));
 
-                for ( size_t i {}; i < current_size; i++)
+                for (size_t i = 0; i < current_s; i++)
                 {
                     new (new_block + i) T(std::move_if_noexcept(start_of_mem[i]));
-                    start_of_mem[i].~T(); 
+                    start_of_mem[i].~T();
                 }
 
                 operator delete(start_of_mem);
 
                 start_of_mem = new_block;
-                address_of_last = start_of_mem + current_size;
-                end_of_mem = start_of_mem + new_capacity;
+                address_of_last = start_of_mem + current_s;
+                end_of_mem = start_of_mem + new_cap;
             }
             
 
