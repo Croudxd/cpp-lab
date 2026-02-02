@@ -1,41 +1,42 @@
-#include <iostream>
 #include <chrono>
-#include <vector> 
 #include "ben/vector.hpp"
+#include <vector>
+#include <string>
+#include <iostream>
 
-int main()
+template <typename T, typename VecType>
+void run_test(size_t count, const T& item, const std::string& label) 
 {
-    int count = 10000000;
-    ben::vector<std::string> v;
-    std::string str = "asdflkajsdflkjasd;lkfja;lskdj;laksjdfl;kjfkdjf;askdjf";
-
-    v.reserve(10000000);
-    // Start timer
+    VecType v;
+    
     auto start = std::chrono::high_resolution_clock::now();
 
-    for (size_t i = 0; i < count; ++i) {
-        v.push_back(str);
+    for (size_t i = 0; i < count; ++i) 
+    {
+        v.push_back(item);
     }
 
     auto end = std::chrono::high_resolution_clock::now();
-
-    std::chrono::duration<double> diff = end - start;
     
-    std::cout << "Pushed " << count << " items in: " << diff.count() << " seconds" << std::endl;
-
-    std::vector<std::string> vec;
-    vec.reserve(10000000);
-
-    auto startvec = std::chrono::high_resolution_clock::now();
-
-    for (size_t i = 0; i < count; ++i) {
-        vec.push_back(str);
+    if (v.size() > 0 && v[0] == item) 
+    {
+        std::chrono::duration<double> diff = end - start;
+        std::cout << "[" << label << "] Time: " << diff.count() << "s" << std::endl;
     }
+}
 
-    auto endvec = std::chrono::high_resolution_clock::now();
+int main() 
+{
+    size_t n = 10000000;
 
-    std::chrono::duration<double> diffvec = endvec - startvec;
-    
-    std::cout << "Pushed " << count << " items in: " << diffvec.count() << " seconds" << std::endl;
+    std::cout << "--- Testing Integers ---" << std::endl;
+    run_test<int, ben::vector<int>>(n, 42, "Ben Vector (int)");
+    run_test<int, std::vector<int>>(n, 42, "Std Vector (int)");
+
+    std::cout << "--- Testing Strings ---" << std::endl;
+    std::string heavy_str = "This is a reasonably long string to trigger heap allocation";
+    run_test<std::string, ben::vector<std::string>>(n, heavy_str, "Ben Vector (string)");
+    run_test<std::string, std::vector<std::string>>(n, heavy_str, "Std Vector (string)");
+
     return 0;
 }
