@@ -81,10 +81,12 @@ namespace ben
 
                 if (cb->shared_ptr == 0)
                 {
+                    bool delete_control_block = (cb->weak_ptr == 0);
+
                     if (ptr != nullptr)
                         delete ptr;
 
-                    if (cb->weak_ptr == 0)
+                    if (delete_control_block)
                     {
                         delete cb;
                     }
