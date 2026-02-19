@@ -1,5 +1,5 @@
 #include <iostream>
-#include <cassert>
+#include <gtest/gtest.h>
 
 #include "ben/shared_ptr.hpp"
 
@@ -21,103 +21,81 @@ struct Tracker
 
 int Tracker::alive_count = 0;
 
-void test_constructor_and_destructor ()
+TEST( SharedPtrTest, ConstructorAndDestructor )
 {
-    std::cout << "Test: Constructor & Destructor... ";
-    assert( Tracker::alive_count == 0 );
+    EXPECT_EQ( Tracker::alive_count, 0 );
     {
         ben::shared_ptr<Tracker> sp( new Tracker( 10 ) );
-        assert( Tracker::alive_count == 1 );
-        assert( sp->id == 10 );
-        assert( sp.use_count() == 1 );
+        EXPECT_EQ( Tracker::alive_count, 1 );
+        EXPECT_EQ( sp->id, 10 );
+        EXPECT_EQ( sp.use_count(), 1 );
     }
-    // Scope end -> Destructor called
-    assert( Tracker::alive_count == 0 );
-    std::cout << "PASSED" << std::endl;
+    EXPECT_EQ( Tracker::alive_count, 0 );
 }
 
-void test_copy_logic ()
+TEST( SharedPtrTest, CopyLogic )
 {
-    std::cout << "Test: Copy Semantics... ";
-    assert( Tracker::alive_count == 0 );
+    EXPECT_EQ( Tracker::alive_count, 0 );
     {
         ben::shared_ptr<Tracker> sp1( new Tracker( 20 ) );
         {
-            // Copy Constructor
             ben::shared_ptr<Tracker> sp2 = sp1;
             
-            assert( Tracker::alive_count == 1 ); // Still only 1 object
-            assert( sp1.use_count() == 2 );
-            assert( sp2.use_count() == 2 );
-            assert( sp2->id == 20 );
+            EXPECT_EQ( Tracker::alive_count, 1 );
+            EXPECT_EQ( sp1.use_count(), 2 );
+            EXPECT_EQ( sp2.use_count(), 2 );
+            EXPECT_EQ( sp2->id, 20 );
         } 
-        // sp2 dies here. sp1 should still be alive.
-        assert( Tracker::alive_count == 1 );
-        assert( sp1.use_count() == 1 );
+        EXPECT_EQ( Tracker::alive_count, 1 );
+        EXPECT_EQ( sp1.use_count(), 1 );
     }
-    // sp1 dies here.
-    assert( Tracker::alive_count == 0 );
-    std::cout << "PASSED" << std::endl;
+    EXPECT_EQ( Tracker::alive_count, 0 );
 }
 
-void test_assignment_operator ()
+TEST( SharedPtrTest, AssignmentOperator )
 {
-    std::cout << "Test: Assignment Operator... ";
-    assert( Tracker::alive_count == 0 );
+    EXPECT_EQ( Tracker::alive_count, 0 );
 
     ben::shared_ptr<Tracker> sp1( new Tracker( 30 ) );
     ben::shared_ptr<Tracker> sp2( new Tracker( 40 ) );
 
-    assert( Tracker::alive_count == 2 );
+    EXPECT_EQ( Tracker::alive_count, 2 );
 
-    // sp1 drops 30 and grabs 40
     sp1 = sp2;
 
-    // Object 30 should be deleted immediately
-    assert( Tracker::alive_count == 1 ); 
-    assert( sp1->id == 40 );
-    assert( sp1.use_count() == 2 );
+    EXPECT_EQ( Tracker::alive_count, 1 ); 
+    EXPECT_EQ( sp1->id, 40 );
+    EXPECT_EQ( sp1.use_count(), 2 );
     
-    // Self assignment check
     sp1 = sp1;
-    assert( sp1.use_count() == 2 );
-
-    std::cout << "PASSED" << std::endl;
+    EXPECT_EQ( sp1.use_count(), 2 );
 }
 
-void test_weak_ptr_locking ()
+TEST( SharedPtrTest, WeakPtrLocking )
 {
-    std::cout << "Test: Weak Ptr & Lock... ";
-    assert( Tracker::alive_count == 0 );
+    EXPECT_EQ( Tracker::alive_count, 0 );
     
     ben::weak_ptr<Tracker> wp;
     {
         ben::shared_ptr<Tracker> sp( new Tracker( 50 ) );
-        wp = sp; // Uses the weak_ptr constructor
+        wp = sp;
 
-        assert( !wp.expired() );
+        EXPECT_FALSE( wp.expired() );
 
-        // Lock to get a strong pointer
         ben::shared_ptr<Tracker> locked = wp.lock();
-        assert( locked.get() != nullptr );
-        assert( locked->id == 50 );
-        assert( locked.use_count() == 2 ); // sp + locked
+        EXPECT_NE( locked.get(), nullptr );
+        EXPECT_EQ( locked->id, 50 );
+        EXPECT_EQ( locked.use_count(), 2 );
     }
-    // sp and locked are gone. Object should be dead.
-    assert( Tracker::alive_count == 0 );
-    assert( wp.expired() );
+    EXPECT_EQ( Tracker::alive_count, 0 );
+    EXPECT_TRUE( wp.expired() );
 
-    // Try to lock dead pointer
     ben::shared_ptr<Tracker> fail = wp.lock();
-    assert( fail.get() == nullptr );
-
-    std::cout << "PASSED" << std::endl;
+    EXPECT_EQ( fail.get(), nullptr );
 }
 
-void test_circular_reference_prevention ()
+TEST( SharedPtrTest, CircularReferencePrevention )
 {
-    std::cout << "Test: Circular Reference Prevention... ";
-    
     struct Node
     {
         ben::shared_ptr<Node> other;
@@ -127,30 +105,12 @@ void test_circular_reference_prevention ()
     ben::shared_ptr<Node> a( new Node() );
     ben::shared_ptr<Node> b( new Node() );
 
-    // A holds B strongly
     a->other = b;
-    // B holds A weakly
     b->weak_other = a;
-
-    // Because B only holds A weakly, when we reset A, it should die.
-    // If B held A strongly, we would have a leak here.
-    
-    // (Manual verification logic usually requires internal instrumentation, 
-    // but ensuring no crash occurs here is the first step).
-    
-    std::cout << "PASSED" << std::endl;
 }
 
-int main ()
+int main ( int argc, char **argv )
 {
-    std::cout << "=== RUNNING BEN::SHARED_PTR TESTS ===" << std::endl;
-    
-    test_constructor_and_destructor();
-    test_copy_logic();
-    test_assignment_operator();
-    test_weak_ptr_locking();
-    test_circular_reference_prevention();
-
-    std::cout << "\nAll Tests Passed Successfully." << std::endl;
-    return 0;
+    ::testing::InitGoogleTest( &argc, argv );
+    return RUN_ALL_TESTS();
 }
