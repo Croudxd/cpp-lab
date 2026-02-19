@@ -7,4 +7,5 @@ Personal C++ playground
 ben::vector<Type T>
 ben::shared_ptr<Type T>
 ben::weak_ptr<Type T>
+ben::map<T key, Y value>
 ```
