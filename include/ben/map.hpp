@@ -1,6 +1,4 @@
 #pragma once
-#include <map>
-
 /**
  * std::map
  *
@@ -79,17 +77,18 @@ namespace ben
                     {
                         rebalance(nn);
                     }
+                node_count++;
 
                 }
             }
 
-            void empty() {}
-            void size() {}
-            void clear() {}
-            void emplace() {}
+            long long size() { return node_count;}
+
+            bool empty() {return (head != nullptr) ? true : false;}
+
             void find() {}
 
-
+            void erase() {}
         private:
             Node<key, value>* get_uncle(Node<key, value>* current)
             {
@@ -139,5 +138,6 @@ namespace ben
             }
 
             Node<key, value>* head = nullptr;
+            long long node_count;
     };
 }
